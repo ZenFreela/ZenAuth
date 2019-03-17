@@ -4,6 +4,7 @@ import com.zenfreela.zenauth.model.User;
 import com.zenfreela.zenauth.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,9 +17,11 @@ import java.util.Optional;
 public class UserController {
 
     private UserRepository userRepository;
+    private BCryptPasswordEncoder passwordEncoder;
 
     public UserController(@Autowired UserRepository userRepository) {
         this.userRepository = userRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
     @PostMapping(path = "/login", produces = "application/json")
@@ -29,7 +32,18 @@ public class UserController {
 
         Optional<User> found = userRepository.findById(user.getEmail());
 
-        return found.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (!found.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        User find = found.get();
+        String password = passwordEncoder.encode(find.getPassword());
+
+        if (!passwordEncoder.matches(user.getPassword(), password)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return ResponseEntity.ok(find);
     }
 
     @PostMapping(path = "/register", produces = "application/json")
@@ -43,6 +57,8 @@ public class UserController {
         if (found.isPresent()) {
             return ResponseEntity.badRequest().build();
         }
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         userRepository.save(user);
         return ResponseEntity.ok(found.get());
