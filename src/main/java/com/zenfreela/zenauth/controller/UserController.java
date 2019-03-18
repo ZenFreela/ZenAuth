@@ -4,12 +4,10 @@ import com.zenfreela.zenauth.model.User;
 import com.zenfreela.zenauth.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -17,11 +15,21 @@ import java.util.Optional;
 public class UserController {
 
     private UserRepository userRepository;
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
 
-    public UserController(@Autowired UserRepository userRepository) {
+    public UserController(@Autowired UserRepository userRepository, @Autowired PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.passwordEncoder = new BCryptPasswordEncoder();
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @GetMapping(path = "/", produces = "application/json")
+    public ResponseEntity<List<User>> findAll() {
+        return ResponseEntity.ok(userRepository.findAll());
+    }
+
+    @DeleteMapping(path = "/", produces = "application/json")
+    public void deleteAll() {
+        userRepository.deleteAll();
     }
 
     @PostMapping(path = "/login", produces = "application/json")
@@ -37,9 +45,8 @@ public class UserController {
         }
 
         User find = found.get();
-        String password = passwordEncoder.encode(find.getPassword());
 
-        if (!passwordEncoder.matches(user.getPassword(), password)) {
+        if (!passwordEncoder.matches(user.getPassword(), find.getPassword())) {
             return ResponseEntity.badRequest().build();
         }
 
@@ -60,8 +67,7 @@ public class UserController {
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        userRepository.save(user);
-        return ResponseEntity.ok(found.get());
+        return ResponseEntity.ok(userRepository.save(user));
     }
 
 }
