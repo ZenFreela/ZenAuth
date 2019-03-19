@@ -6,9 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Optional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/users")
@@ -17,57 +16,56 @@ public class UserController {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
 
-    public UserController(@Autowired UserRepository userRepository, @Autowired PasswordEncoder passwordEncoder) {
+    @Autowired
+    public UserController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping(path = "/", produces = "application/json")
-    public ResponseEntity<List<User>> findAll() {
+    public ResponseEntity<Flux<User>> findAll() {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
     @DeleteMapping(path = "/", produces = "application/json")
-    public void deleteAll() {
-        userRepository.deleteAll();
+    public Mono<Void> deleteAll() {
+        return userRepository.deleteAll();
     }
 
     @PostMapping(path = "/login", produces = "application/json")
-    public ResponseEntity<User> login(@RequestBody User user) {
-        if (user == null) {
+    public ResponseEntity<Mono<User>> login(@RequestBody User body) {
+        if (body == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<User> found = userRepository.findById(user.getEmail());
+        User user = userRepository.findById(body.getEmail()).block();
 
-        if (!found.isPresent()) {
+        if (user == null) {
             return ResponseEntity.notFound().build();
         }
 
-        User find = found.get();
-
-        if (!passwordEncoder.matches(user.getPassword(), find.getPassword())) {
+        if (!passwordEncoder.matches(body.getPassword(), user.getPassword())) {
             return ResponseEntity.badRequest().build();
         }
 
-        return ResponseEntity.ok(find);
+        return ResponseEntity.ok(Mono.just(user));
     }
 
     @PostMapping(path = "/register", produces = "application/json")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        if (user == null) {
+    public ResponseEntity<Mono<User>> register(@RequestBody User body) {
+        if (body == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<User> found = userRepository.findById(user.getEmail());
+        User user = userRepository.findById(body.getEmail()).block();
 
-        if (found.isPresent()) {
+        if (user != null) {
             return ResponseEntity.badRequest().build();
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        body.setPassword(passwordEncoder.encode(body.getPassword()));
 
-        return ResponseEntity.ok(userRepository.save(user));
+        return ResponseEntity.ok(userRepository.save(body));
     }
 
 }
