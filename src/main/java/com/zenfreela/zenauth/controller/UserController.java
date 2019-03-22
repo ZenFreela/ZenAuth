@@ -4,6 +4,7 @@ import com.zenfreela.zenauth.model.User;
 import com.zenfreela.zenauth.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -33,13 +34,8 @@ public class UserController {
     }
 
     @PostMapping(path = "/login", produces = "application/json")
-    public ResponseEntity<Mono<User>> login(@RequestBody User body) {
-        if (body == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    public ResponseEntity<Mono<User>> login(@RequestBody @NonNull User body) {
         User user = userRepository.findById(body.getEmail()).block();
-
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
@@ -52,13 +48,8 @@ public class UserController {
     }
 
     @PostMapping(path = "/register", produces = "application/json")
-    public ResponseEntity<Mono<User>> register(@RequestBody User body) {
-        if (body == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    public ResponseEntity<Mono<User>> register(@RequestBody @NonNull User body) {
         User user = userRepository.findById(body.getEmail()).block();
-
         if (user != null) {
             return ResponseEntity.badRequest().build();
         }
